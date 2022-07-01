@@ -1,0 +1,181 @@
+<html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; chartset=UTF-8">
+        <script>
+            function setup(){//DISPLAY SYS ACCORDING TO COOKIES
+                var cookiePresent = document.cookie
+                if (cookiePresent ==""){//no cookies
+                    document.getElementById("tweetsPage").hidden = true
+                    document.getElementById("loginPage").hidden = false
+                }else{//have cookies
+                    getTweets()
+                    document.getElementById("tweetsPage").hidden = false
+                    document.getElementById("loginPage").hidden = true
+                } 
+            }
+
+            function loginClicked(){ 
+                function loginClickedHandler(){//DISPLAY TWEETS UPON LOGIN
+                    var data = oReq.responseText
+                    var display = document.getElementById("loginError")       
+                    if(oReq.status==200){ 
+                        display.innerHTML = " "
+                        getTweets()
+                        document.getElementById("tweetsPage").hidden = false
+                        document.getElementById("loginPage").hidden = true
+                    }else if(oReq.status ==403){
+                        display.innerHTML = data
+                    }
+                }
+
+                var usrName = document.getElementById("username").value
+                var pswrd = document.getElementById("password").value
+                var sampleJson = {'username': usrName, 'pswrd': pswrd}
+                var asString = JSON.stringify(sampleJson)
+                var oReq = new XMLHttpRequest() 
+                oReq.addEventListener("load", loginClickedHandler) 
+                
+                oReq.open("POST", "/api/login") 
+                oReq.setRequestHeader("Accept", "application/json")
+                oReq.withCredentials = true
+                oReq.send(' '+asString)
+            }            
+
+            function getTweets(){//DISPLAY ALL OUR TWEETS
+                function getTweetsHandler(){
+                    var tweetsArr = JSON.parse(oReq.responseText)
+                    var tweetsDiv = document.getElementById("tweets")
+
+                    for (var tweet of tweetsArr){//CREATING OUR TWEETS
+                        var tweetInfo = document.createElement("div")
+                        tweetInfo.innerText = tweet + "   "
+                        var tweetDelBttn = document.createElement("button")
+                        tweetDelBttn.addEventListener('click', deleteTweet)
+                        tweetDelBttn.innerText = "Delete"
+                        tweetDelBttn.id=tweet
+            
+                        var nameInCookie = document.cookie.split("=")[1]
+                        var tweetedBy = tweet.split(" ").slice(-1)
+                        //ADD BUTTON ONLY IF LOGINED NAME SAME AS COOKIE VAL
+                        if(tweetedBy==nameInCookie)
+                            tweetInfo.appendChild(tweetDelBttn) 
+                        tweetsDiv.appendChild(tweetInfo)  
+                        tweetsDiv.appendChild(document.createElement("p")) 
+                    }
+                }
+
+                var oReq = new XMLHttpRequest()
+                oReq.addEventListener("load", getTweetsHandler)
+
+                oReq.open("GET", "/api/tweet")
+                oReq.setRequestHeader("Accept", "application/json")
+                oReq.withCredentials = true
+                oReq.send()
+            }
+
+            function postTweet(){//POST A SINGLE TWEET
+                function postTweetHandler(){
+                    var tweetsDiv = document.getElementById("tweets")
+                    var tweetInfo = document.createElement("div")
+                    cookieName = document.cookie.split("=")[1]
+                    tweetInfo.innerText = newTweet + " by " + cookieName + " "
+                    var tweetDelBttn = document.createElement("button")
+                    tweetDelBttn.addEventListener('click', deleteTweet)
+                    tweetDelBttn.innerText = "Delete"
+                    tweetDelBttn.id = tweetInfo.value
+                    tweetInfo.appendChild(tweetDelBttn) 
+                    tweetsDiv.appendChild(tweetInfo)  
+                    tweetsDiv.appendChild(document.createElement("p"))
+                    document.getElementById('newTweet').value =""
+                }
+                
+                var newTweet = document.getElementById("newTweet").value
+                var usrName = document.getElementById("username").value //will need to know who
+                var sampleJson = {'username': usrName, 'tweet': newTweet}
+                var asString = JSON.stringify(sampleJson)
+                
+                var oReq = new XMLHttpRequest() 
+                oReq.addEventListener("load", postTweetHandler) 
+                
+                oReq.open("POST", "/api/tweet") 
+                oReq.setRequestHeader("Accept", "application/json")
+                oReq.withCredentials = true
+                oReq.send(asString)
+            }
+
+            function logout(){//DELETE COOKIES AND DISPLAY ACCORDINGLY
+                function logoutHandler(){                    
+                    if(oReq.status==200){
+                        document.getElementById("tweets").innerHTML = ""
+                        document.getElementById("username").value = ""
+                        document.getElementById("password").value = ""
+                        document.getElementById('newTweet').value =""
+
+                        //will make tweets thing hidden and loginpage show
+                        document.getElementById("tweetsPage").hidden = true
+                        document.getElementById("loginPage").hidden = false   
+                    }
+                }
+
+                var oReq = new XMLHttpRequest()
+                oReq.addEventListener("load", logoutHandler) 
+                oReq.open("DELETE", "/api/login") 
+                oReq.withCredentials = true 
+                oReq.send()                
+            }
+        
+            function deleteTweet(){//DELETE A SPECIFIC TWEET 
+                function postDeleteTweetHandler(){
+                    if(oReq.status==200){
+                        var tweetsDiv = document.getElementById("tweets")
+                        tweetsDiv.innerHTML = " "
+                        getTweets()
+                    }
+                }
+                var oReq = new XMLHttpRequest()
+                oReq.addEventListener("load", postDeleteTweetHandler) 
+                // oReq.open("DELETE", "/api/twwet/<id>") 
+                var tweetId = this.id 
+                oReq.open("DELETE", "/api/tweet") 
+                oReq.withCredentials = true
+                oReq.send(tweetId)                
+            }
+        </script>
+    </head>
+
+    <body onload="setup()">
+        <title>A02</title>
+        <h1>System:</h1>
+
+        <div id="loginPage">
+            <form id="formId">
+                <label for="username">UserName:</label>            
+                <input type="text" id="username" name="username"><br><br>
+                <label for="password">Password:  .</label>            
+                <input type="text" id="password" name="password">
+            </form>
+            <button onclick="loginClicked()">Login</button>
+        </div>
+    
+        <p></p>
+        <div id="loginError"> </div> 
+
+        <!-- <button onclick="getTweets()">TEST GET</button> -->
+
+        <div id="tweetsPage" hidden="True">
+        <!-- <div id="tweetsPage"> -->
+            <h1>Tweets</h1>
+
+            <label for="newTweet">NewTweet</label>
+            <input type="text" id="newTweet" name="newTweet">
+            <button onclick="postTweet()">post</button>
+            <p></p>
+
+            <button type="button" onclick="logout()">logout</button>
+            <p></p>
+
+            <div id="tweets"> </div>
+        </div>
+    </body>
+    
+</html>
